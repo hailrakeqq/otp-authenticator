@@ -1,12 +1,75 @@
 #include <chrono>
-#include <cstring>
+#include <fstream>
+#include <future>
 #include <iomanip>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect.hpp>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
+#include <string>
+#include <thread>
+
+// fix: cin block thread
+// TODO: add frame update , and make progress bar
+// TODO: implement crud function for topt
+
+using json = nlohmann::json;
+
+#define SECRET_KEY_FILE_PATH ".secret_key"
+#define JSON_STORAGE "storage.json"
+
+typedef struct {
+  std::string name;
+  std::string secret;
+  std::string totp;
+} otp;
+
+std::vector<otp> optVector;
+
+#pragma region crypt
+
+std::string generateSecretKey() {
+  std::string key;
+  const char charset[] =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+  for (int8_t i = 0; i < 16; i++)
+    key += charset[rand() % (sizeof(charset) - 1)];
+
+  return key;
+}
+
+std::string getSecretKey(std::string pathToSecretKeyFile) {
+  std::ifstream keyFile(pathToSecretKeyFile);
+  if (keyFile.is_open()) {
+    std::string key;
+    keyFile >> key;
+    keyFile.close();
+
+    return key;
+  }
+  return "";
+}
+
+std::string encodeString(const std::string &data, const std::string &key) {
+  std::string encodedData = data;
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    encodedData[i] = data[i] ^ key[i % key.size()];
+  }
+
+  return encodedData;
+}
+
+std::string decodeString(const std::string &encodedData,
+                         const std::string &key) {
+  return encodeString(encodedData, key);
+}
+
+#pragma endregion
 
 std::string decodeQRcode(std::string path) {
   try {
@@ -71,7 +134,93 @@ std::string generateTOTP(const std::string &key, uint64_t timeStep = 30,
   return codeStream.str();
 }
 
-int main(int argc, char *argv[]) {
-  std::cout << decodeQRcode("../qr-code.png") << std::endl;
+void addNewOTPItem() {}
+
+void changeOTPItem() {}
+
+void deleteOTPItem() {}
+
+std::vector<otp> getOtpVector(json *jsonData) {
+  std::vector<otp> otpArray;
+
+  for (auto it = jsonData->begin(); it != jsonData->end(); ++it) {
+    otp entry;
+    entry.name = it.key();
+    entry.secret = it.value().get<std::string>();
+    otpArray.push_back(entry);
+  }
+
+  return otpArray;
+}
+
+void someFunction() { std::cout << "1" << std::endl; }
+void someFunction2() { std::cout << "2" << std::endl; }
+
+void printMainScreen() {
+  const int fieldWidth = 31;
+
+  for (auto &item : optVector) {
+    std::cout << "+-------------------------------+" << std::endl;
+    std::cout << '|' << std::setfill(' ') << std::setw(fieldWidth) << std::left
+              << ' ' + item.name + ": " + item.totp << '|' << std::endl;
+    std::cout << "+-------------------------------+" << std::endl;
+  }
+}
+
+int main() {
+  std::string key = getSecretKey(SECRET_KEY_FILE_PATH);
+
+  if (key.empty()) {
+    std::string newKey = generateSecretKey();
+    std::ofstream newKeyFile(SECRET_KEY_FILE_PATH);
+    newKeyFile << newKey;
+    newKeyFile.close();
+
+    key = newKey;
+  }
+
+  std::ifstream storageFile(JSON_STORAGE);
+  if (storageFile.is_open()) {
+    json data;
+
+    storageFile >> data;
+    storageFile.close();
+
+    optVector = getOtpVector(&data);
+  } else {
+    std::ofstream storageFile(JSON_STORAGE);
+    json data = json::object();
+
+    storageFile << data;
+
+    storageFile.close();
+  }
+
+  std::thread timerThread([]() {
+    while (true) {
+      if (!optVector.empty()) {
+        for (auto &item : optVector) {
+          item.totp = generateTOTP(item.secret);
+        }
+      }
+
+      std::this_thread::sleep_for(std::chrono::seconds(30));
+    }
+  });
+
+  char input;
+  while (true) {
+    printMainScreen();
+
+    std::cout << "Press 'm' to open the menu: ";
+    std::cin >> input;
+
+    if (input == 'm') {
+      std::cout << "Menu is not implemented yet." << std::endl;
+    }
+  }
+
+  timerThread.join();
+
   return 0;
 }
