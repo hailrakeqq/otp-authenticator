@@ -1,4 +1,5 @@
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <future>
 #include <iomanip>
@@ -134,9 +135,22 @@ std::string generateTOTP(const std::string &key, uint64_t timeStep = 30,
   return codeStream.str();
 }
 
-void addNewOTPItem() {}
+void addNewOTPItem(otp *otpItem) {
+  if (std::filesystem::is_regular_file(JSON_STORAGE)) {
+    json otpFile;
+    std::ifstream iStream(JSON_STORAGE);
+    iStream >> otpFile;
+    iStream.close();
 
-void changeOTPItem() {}
+    otpFile[otpItem->name] = otpItem->secret;
+
+    std::ofstream oStream(JSON_STORAGE);
+    oStream << otpFile.dump(4);
+    oStream.close();
+  }
+}
+
+void changeOTPItem(std::string currentName, std::string newName) {}
 
 void deleteOTPItem() {}
 
@@ -152,9 +166,6 @@ std::vector<otp> getOtpVector(json *jsonData) {
 
   return otpArray;
 }
-
-void someFunction() { std::cout << "1" << std::endl; }
-void someFunction2() { std::cout << "2" << std::endl; }
 
 void printMainScreen() {
   const int fieldWidth = 31;
