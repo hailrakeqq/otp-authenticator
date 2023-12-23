@@ -150,9 +150,44 @@ void addNewOTPItem(otp *otpItem) {
   }
 }
 
-void changeOTPItem(std::string currentName, std::string newName) {}
+void changeOTPItem(std::string currentName, std::string newName) {
+  nlohmann::json otpFile;
+  std::ifstream iStream(JSON_STORAGE);
+  iStream >> otpFile;
+  iStream.close();
 
-void deleteOTPItem() {}
+  auto it = otpFile.find(currentName);
+  if (it != otpFile.end()) {
+    std::string itemSecret = it.value();
+
+    otpFile.erase(it);
+
+    otpFile[newName] = itemSecret;
+
+    std::ofstream oStream(JSON_STORAGE);
+    oStream << otpFile.dump(4);
+    oStream.close();
+  } else {
+    std::cout << "OTP item with name '" << currentName << "' not found.\n";
+  }
+}
+
+void deleteOTPItem(std::string name) {
+  json otpFile;
+  std::ifstream iStream(JSON_STORAGE);
+  iStream >> otpFile;
+  iStream.close();
+
+  if (otpFile.find(name) != otpFile.end()) {
+    otpFile.erase(name);
+
+    std::ofstream oStream(JSON_STORAGE);
+    oStream << otpFile.dump(4);
+    oStream.close();
+  } else {
+    std::cout << "OTP item '" << name << "' not found.\n";
+  }
+}
 
 std::vector<otp> getOtpVector(json *jsonData) {
   std::vector<otp> otpArray;
@@ -179,6 +214,7 @@ void printMainScreen() {
 }
 
 int main() {
+
   std::string key = getSecretKey(SECRET_KEY_FILE_PATH);
 
   if (key.empty()) {
