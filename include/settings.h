@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <ncurses.h>
 #include <nlohmann/json.hpp>
 
 #define SECRET_KEY_FILE_PATH ".secret_key"

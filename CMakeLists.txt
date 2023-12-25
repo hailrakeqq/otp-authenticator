@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.12)
 
 project(otp-authenticator)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -g")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -g")
+endif()
+
 find_package(OpenCV REQUIRED)
 find_package(OpenSSL REQUIRED)
 

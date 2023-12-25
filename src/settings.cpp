@@ -1,6 +1,10 @@
 #include "../include/settings.h"
 
 settings::settings() {
+  if (!std::filesystem::exists(JSON_STORAGE_PATH)) {
+    createEmptyJsonFile(JSON_STORAGE_PATH);
+  }
+
   std::ifstream storageFile(JSON_STORAGE_PATH);
   storageFile >> jsonFile;
 
@@ -36,12 +40,12 @@ void settings::createEmptyJsonFile(std::string path) {
 }
 
 void settings::printMenu() {
-  std::cout << "Settings:" << std::endl;
-  std::cout << "1. add otp" << std::endl;
-  std::cout << "2. delete otp" << std::endl;
-  std::cout << "3. change otp" << std::endl;
-  std::cout << "4. show otp list" << std::endl;
-  std::cout << "5. exit" << std::endl;
+  printw("Settings:\n");
+  printw("1. add otp\n");
+  printw("2. delete otp\n");
+  printw("3. change otp\n");
+  printw("4. show otp list\n");
+  printw("5. exit\n");
 }
 
 void settings::addNewOTPItem(otp *otpItem) {

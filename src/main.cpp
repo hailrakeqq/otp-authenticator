@@ -1,17 +1,16 @@
 #include "../include/crypt.h"
 #include "../include/settings.h"
 #include <chrono>
-// #include <future>
-// #include <iomanip>
-// #include <iostream>
 #include <ncurses.h>
-
 #include <thread>
+
+#define SET_CURSOR_POSITION(x, y)                                              \
+  std::cout << "\033[" << (y + 1) << ";" << (x + 1) << "H"
 
 // TODO: add frame update , and make progress bar
 
-std::vector<otp> optVector;
-
+std::vector<otp> otpVector;
+int progress;
 bool isMenuOpen = false;
 
 std::vector<otp> getOtpVector(json *jsonData) {
@@ -27,33 +26,64 @@ std::vector<otp> getOtpVector(json *jsonData) {
   return otpArray;
 }
 
-void printMainScreen() {
-  const int fieldWidth = 31;
+void printProgressBar(int progress, int width) {
+  printw("[");
+  int pos = width * progress / 100;
+  for (int i = 0; i < width; ++i) {
+    if (i < pos)
+      printw("=");
+    else if (i == pos)
+      printw(">");
+    else
+      printw(" ");
+  }
+  printw("]");
+  printw("\n");
+}
 
-  for (auto &item : optVector) {
-    std::cout << "+-------------------------------+" << std::endl;
-    std::cout << '|' << std::setfill(' ') << std::setw(fieldWidth) << std::left
-              << ' ' + item.name + ": " + item.totp << '|' << std::endl;
-    std::cout << "+-------------------------------+" << std::endl;
+void printOtpList() {
+  for (int i = 0; i < otpVector.size(); i++) {
+    printw("%d. %s: %s\n", i, otpVector[i].name, otpVector[i].secret);
+  }
+}
+
+void printMainScreen() {
+  const int fieldWidth = 30;
+  const int progressBarWidth = fieldWidth;
+
+  printProgressBar(progress, progressBarWidth);
+
+  for (auto &item : otpVector) {
+    printw("+-------------------------------+\n");
+    printw("| %s: %-*s|", item.name.c_str(),
+           fieldWidth - (int)item.name.length() - 2, item.totp.c_str());
+    printw("\n+-------------------------------+\n");
   }
 }
 
 int main() {
   initscr();
-  keypad(stdscr, TRUE);
+  timeout(0);
+  noecho();
+  curs_set(FALSE);
 
   auto s = new settings();
-  optVector = getOtpVector(&s->jsonFile);
+  otpVector = getOtpVector(&s->jsonFile);
 
   std::thread timerThread([]() { // update topt every 30 seconds
     while (true) {
-      if (!optVector.empty()) {
-        for (auto &item : optVector) {
+      if (!otpVector.empty()) {
+        for (auto &item : otpVector) {
           item.totp = crypt::generateTOTP(item.secret);
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::seconds(30));
+      for (int i = 0; i < 30; i++) {
+        progress = static_cast<int>((static_cast<double>(i) / 30.0) * 100.0);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+
+      progress = 0;
     }
   });
 
@@ -61,19 +91,44 @@ int main() {
 
   while (true) {
     clear();
+    SET_CURSOR_POSITION(0, 0);
 
-    if (isMenuOpen) {
+    if (isMenuOpen)
       s->printMenu();
-    } else {
+    else
       printMainScreen();
-    }
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     refresh();
 
     ch = getch();
 
     if (ch == 'm' || ch == 'M') {
       isMenuOpen = !isMenuOpen;
+    } else if (ch == '1' && isMenuOpen) {
+      // add otp
+    } else if (ch == '2' && isMenuOpen) {
+    deleteItem:
+      printOtpList();
+      printw("Enter index otp item to delete: ");
+
+      std::string input;
+      std::getline(std::cin, input);
+      int index = std::stoi(input);
+
+      if (index <= otpVector.size() && index >= 0) {
+        s->deleteOTPItem(otpVector[index].name);
+      } else {
+        printw("You enter wrong item. Try again...\n");
+        input.clear();
+        goto deleteItem;
+      }
+    } else if (ch == '3' && isMenuOpen) {
+      // change otp
+    } else if (ch == '4' && isMenuOpen) {
+      printOtpList();
+    } else if (ch == '5' && isMenuOpen) {
+      isMenuOpen = false;
     } else if (ch == 27) {
       break;
     }
