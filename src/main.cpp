@@ -106,7 +106,30 @@ int main() {
     if (ch == 'm' || ch == 'M') {
       isMenuOpen = !isMenuOpen;
     } else if (ch == '1' && isMenuOpen) {
-      // add otp
+    addItem:
+      printw("Enter path to qr-code image: ");
+      std::string input;
+      std::getline(std::cin, input);
+
+      if (!input.empty() && std::filesystem::is_regular_file("input")) {
+        auto secret = crypt::decodeQRcode(input);
+
+        printw("Enter name for this otp: ");
+        std::string name;
+        std::getline(std::cin, name);
+
+        otp newOtpItem;
+        newOtpItem.name = name;
+        newOtpItem.secret = secret;
+
+        otpVector.push_back(newOtpItem);
+        s->addNewOTPItem(&newOtpItem);
+      } else {
+        printw("You enter path to qr-code image or image does not exist. Try "
+               "again...\n");
+        input.clear();
+        goto addItem;
+      }
     } else if (ch == '2' && isMenuOpen) {
     deleteItem:
       printOtpList();
@@ -124,7 +147,23 @@ int main() {
         goto deleteItem;
       }
     } else if (ch == '3' && isMenuOpen) {
-      // change otp
+    changeItemName:
+      printOtpList();
+      printw("Enter item index to change name");
+      std::string input;
+      std::getline(std::cin, input);
+      int index = std::stoi(input);
+
+      if (index <= otpVector.size() && index >= 0) {
+        printw("Enter new item name: ");
+        std::string newItemName;
+        std::getline(std::cin, newItemName);
+        s->changeOTPItem(otpVector[index].name, newItemName);
+      } else {
+        printw("You enter wrong item. Try again...\n");
+        input.clear();
+        goto changeItemName;
+      }
     } else if (ch == '4' && isMenuOpen) {
       printOtpList();
     } else if (ch == '5' && isMenuOpen) {
